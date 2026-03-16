@@ -267,7 +267,7 @@
             const total = gameData.left.length;
 
             // 核對答案
-            /* gameData.left.forEach(item => {
+            gameData.left.forEach(item => {
                 const leftId = item.id;
                 const correctMatchId = item.matchId;
                 const studentAnswer = userAnswers[leftId];
@@ -289,7 +289,7 @@
                     alert(`⏱️ 測驗結束！\n你的成績：${score} / ${total}\n（綠線為正確，紅線為錯誤）`);
                 }
             }, 300);
-        } */
+        } 
 
         initGame();
     </script>
