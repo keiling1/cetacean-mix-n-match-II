@@ -272,7 +272,7 @@
                 if (leftEl && rightEl) {
                     drawLine(leftEl, rightEl, leftId);
                     
-                    if (isGameOver) {
+                    /* if (isGameOver) {
                         const line = document.getElementById(`line-${leftId}`);
                         const correctMatchId = gameData.left.find(item => item.id === leftId).matchId;
                         if (rightId === correctMatchId) {
@@ -280,7 +280,7 @@
                         } else {
                             line.setAttribute('class', 'line-wrong');
                         }
-                    }
+                    } */
                 }
             }
         });
