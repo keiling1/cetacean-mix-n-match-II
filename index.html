@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課前熱身：連線遊戲</title>
+    <title>課前熱身：連線遊戲 (計時挑戰版)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -13,7 +13,40 @@
             align-items: center;
             padding: 20px;
         }
-        h1 { color: #333; }
+        h1 { color: #333; margin-bottom: 10px; }
+        
+        /* 控制區塊：計時器與按鈕 */
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 600px;
+            max-width: 90vw;
+            margin-bottom: 20px;
+        }
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        #confirm-btn {
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background-color: #1976d2;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #confirm-btn:hover { background-color: #1565c0; }
+        #confirm-btn:disabled { background-color: #9e9e9e; cursor: not-allowed; }
+
+        /* 遊戲主體區塊 */
         #game-container {
             display: flex;
             justify-content: space-between;
@@ -24,12 +57,13 @@
             padding: 40px;
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: opacity 0.3s;
         }
         .column {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            z-index: 2; /* 確保按鈕在線條上方 */
+            z-index: 2;
         }
         .item {
             padding: 15px 20px;
@@ -42,12 +76,12 @@
             font-size: 18px;
             transition: all 0.2s;
             user-select: none;
+            min-width: 120px;
         }
         .item:hover { background-color: #b2ebf2; }
-        .item.selected { background-color: #ffeb3b; border-color: #fbc02d; }
-        .item.matched { background-color: #c8e6c9; border-color: #4caf50; cursor: default; }
+        .item.selected { background-color: #ffeb3b; border-color: #fbc02d; box-shadow: 0 0 10px rgba(251, 192, 45, 0.5); }
         
-        /* 用來畫線的 SVG 畫布 */
+        /* SVG 畫布與線條 */
         #svg-canvas {
             position: absolute;
             top: 0;
@@ -55,19 +89,28 @@
             width: 100%;
             height: 100%;
             z-index: 1;
-            pointer-events: none; /* 讓點擊穿透畫布 */
+            pointer-events: none;
         }
         line {
-            stroke: #4caf50;
-            stroke-width: 4;
+            stroke-width: 5;
             stroke-linecap: round;
+            transition: stroke 0.3s;
         }
+        .line-unconfirmed { stroke: #9e9e9e; } /* 尚未確認時的線條顏色 */
+        .line-correct { stroke: #4caf50; }    /* 答對的顏色 */
+        .line-wrong { stroke: #f44336; }      /* 答錯的顏色 */
+
     </style>
 </head>
 <body>
 
     <h1>🧠 課前熱身連線挑戰</h1>
-    <p>請點擊左邊的題目，再點擊右邊對應的答案！</p>
+    <p>點擊左邊題目，再點右邊答案。連錯可以重連，確認無誤後請按送出！</p>
+
+    <div id="controls">
+        <div id="timer">時間: 60秒</div>
+        <button id="confirm-btn">確認送出</button>
+    </div>
 
     <div id="game-container">
         <svg id="svg-canvas"></svg>
@@ -77,7 +120,6 @@
 
     <script>
         // ✏️ 在這裡修改你的題目與答案！
-        // 確保 left 的 matchId 對應到 right 的 id
         const gameData = {
             left: [
                 { id: 'L1', text: '蘋果', matchId: 'R2' },
@@ -93,102 +135,158 @@
             ]
         };
 
+        // ⏱️ 在這裡修改遊戲時間（秒）
+        let timeLeft = 60; 
+
         const leftCol = document.getElementById('left-column');
         const rightCol = document.getElementById('right-column');
         const svgCanvas = document.getElementById('svg-canvas');
+        const timerDisplay = document.getElementById('timer');
+        const confirmBtn = document.getElementById('confirm-btn');
 
         let selectedLeft = null;
+        let isGameOver = false;
+        let timerInterval;
+        let userAnswers = {}; // 記錄學生的作答： { 'L1': 'R2', 'L2': 'R3' ... }
 
-        // 初始化遊戲畫面
+        // 初始化遊戲
         function initGame() {
-            // 打亂右邊答案的順序 (可選)
             const shuffledRight = gameData.right.sort(() => Math.random() - 0.5);
 
-            gameData.left.forEach(item => {
-                const div = createItemDiv(item, 'left');
-                leftCol.appendChild(div);
-            });
+            gameData.left.forEach(item => leftCol.appendChild(createItemDiv(item, 'left')));
+            shuffledRight.forEach(item => rightCol.appendChild(createItemDiv(item, 'right')));
 
-            shuffledRight.forEach(item => {
-                const div = createItemDiv(item, 'right');
-                rightCol.appendChild(div);
-            });
+            confirmBtn.addEventListener('click', endGame);
+            startTimer();
         }
 
-        // 建立選項按鈕
+        // 啟動計時器
+        function startTimer() {
+            timerDisplay.textContent = `時間: ${timeLeft}秒`;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `時間: ${timeLeft}秒`;
+                
+                if (timeLeft <= 10) {
+                    timerDisplay.style.color = 'white';
+                    timerDisplay.style.backgroundColor = '#d32f2f'; // 最後10秒變紅底警示
+                }
+
+                if (timeLeft <= 0) {
+                    endGame(); // 時間到自動強制送出
+                }
+            }, 1000);
+        }
+
         function createItemDiv(item, side) {
             const div = document.createElement('div');
             div.className = 'item';
             div.textContent = item.text;
             div.dataset.id = item.id;
-            if (item.matchId) div.dataset.match = item.matchId;
             div.dataset.side = side;
-
             div.addEventListener('click', () => handleItemClick(div));
             return div;
         }
 
-        // 處理點擊邏輯
         function handleItemClick(element) {
-            if (element.classList.contains('matched')) return;
+            if (isGameOver) return; // 遊戲結束後禁止點擊
 
             const side = element.dataset.side;
+            const id = element.dataset.id;
 
             if (side === 'left') {
-                // 清除之前的選取狀態
                 if (selectedLeft) selectedLeft.classList.remove('selected');
                 selectedLeft = element;
                 element.classList.add('selected');
             } 
             else if (side === 'right' && selectedLeft) {
-                // 檢查是否配對成功
-                if (selectedLeft.dataset.match === element.dataset.id) {
-                    // 配對成功
-                    selectedLeft.classList.remove('selected');
-                    selectedLeft.classList.add('matched');
-                    element.classList.add('matched');
-                    drawLine(selectedLeft, element);
-                    selectedLeft = null;
-                    checkWin();
-                } else {
-                    // 配對失敗，簡單的視覺回饋
-                    element.style.backgroundColor = '#ffcdd2';
-                    setTimeout(() => element.style.backgroundColor = '', 500);
+                const leftId = selectedLeft.dataset.id;
+                const rightId = id;
+
+                // 如果這個右邊選項已經被其他左邊連過了，先清除那條線
+                for (let l_id in userAnswers) {
+                    if (userAnswers[l_id] === rightId) {
+                        delete userAnswers[l_id];
+                        removeLine(l_id);
+                    }
                 }
+
+                // 記錄答案並畫線
+                userAnswers[leftId] = rightId;
+                drawLine(selectedLeft, element, leftId);
+
+                // 解除選取狀態
+                selectedLeft.classList.remove('selected');
+                selectedLeft = null;
             }
         }
 
-        // 在兩個元素之間畫線
-        function drawLine(el1, el2) {
+        // 畫線邏輯更新：加上 ID 以便管理
+        function drawLine(el1, el2, leftId) {
+            removeLine(leftId); // 畫新線前，先清除該題目舊的線
+
             const containerRect = document.getElementById('game-container').getBoundingClientRect();
             const rect1 = el1.getBoundingClientRect();
             const rect2 = el2.getBoundingClientRect();
 
-            // 計算相對於容器的中心點
             const x1 = rect1.right - containerRect.left;
             const y1 = rect1.top + (rect1.height / 2) - containerRect.top;
             const x2 = rect2.left - containerRect.left;
             const y2 = rect2.top + (rect2.height / 2) - containerRect.top;
 
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('id', `line-${leftId}`);
             line.setAttribute('x1', x1);
             line.setAttribute('y1', y1);
             line.setAttribute('x2', x2);
             line.setAttribute('y2', y2);
+            line.setAttribute('class', 'line-unconfirmed');
             svgCanvas.appendChild(line);
         }
 
-        // 檢查是否全部完成
-        function checkWin() {
-            const matchedItems = document.querySelectorAll('.item.matched');
-            if (matchedItems.length === (gameData.left.length * 2)) {
-                setTimeout(() => {
-                    alert('🎉 恭喜完成熱身！準備開始今天的課程！');
-                }, 300);
-            }
+        function removeLine(leftId) {
+            const line = document.getElementById(`line-${leftId}`);
+            if (line) line.remove();
         }
 
-        // 啟動遊戲
+        // 遊戲結束與計分結算
+        function endGame() {
+            if (isGameOver) return;
+            isGameOver = true;
+            clearInterval(timerInterval); // 停止計時
+            
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '已送出';
+            document.getElementById('game-container').style.opacity = '0.9';
+
+            let score = 0;
+            const total = gameData.left.length;
+
+            // 核對答案
+            gameData.left.forEach(item => {
+                const leftId = item.id;
+                const correctMatchId = item.matchId;
+                const studentAnswer = userAnswers[leftId];
+                const line = document.getElementById(`line-${leftId}`);
+
+                if (studentAnswer === correctMatchId) {
+                    score++;
+                    if (line) line.setAttribute('class', 'line-correct'); // 答對變綠色
+                } else {
+                    if (line) line.setAttribute('class', 'line-wrong'); // 答錯變紅色
+                }
+            });
+
+            // 延遲一點點跳出視窗，讓學生先看到顏色變化
+            setTimeout(() => {
+                if (score === total) {
+                    alert(`🎉 太棒了！全對！\n你的成績：${score} / ${total}`);
+                } else {
+                    alert(`⏱️ 測驗結束！\n你的成績：${score} / ${total}\n（綠線為正確，紅線為錯誤）`);
+                }
+            }, 300);
+        }
+
         initGame();
     </script>
 </body>
