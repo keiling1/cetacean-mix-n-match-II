@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課前熱身：連線遊戲</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        h1 { color: #333; }
+        #game-container {
+            display: flex;
+            justify-content: space-between;
+            width: 600px;
+            max-width: 90vw;
+            position: relative;
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 2; /* 確保按鈕在線條上方 */
+        }
+        .item {
+            padding: 15px 20px;
+            background-color: #e0f7fa;
+            border: 2px solid #00bcd4;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .item:hover { background-color: #b2ebf2; }
+        .item.selected { background-color: #ffeb3b; border-color: #fbc02d; }
+        .item.matched { background-color: #c8e6c9; border-color: #4caf50; cursor: default; }
+        
+        /* 用來畫線的 SVG 畫布 */
+        #svg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none; /* 讓點擊穿透畫布 */
+        }
+        line {
+            stroke: #4caf50;
+            stroke-width: 4;
+            stroke-linecap: round;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🧠 課前熱身連線挑戰</h1>
+    <p>請點擊左邊的題目，再點擊右邊對應的答案！</p>
+
+    <div id="game-container">
+        <svg id="svg-canvas"></svg>
+        <div class="column" id="left-column"></div>
+        <div class="column" id="right-column"></div>
+    </div>
+
+    <script>
+        // ✏️ 在這裡修改你的題目與答案！
+        // 確保 left 的 matchId 對應到 right 的 id
+        const gameData = {
+            left: [
+                { id: 'L1', text: '蘋果', matchId: 'R2' },
+                { id: 'L2', text: '香蕉', matchId: 'R3' },
+                { id: 'L3', text: '貓咪', matchId: 'R1' },
+                { id: 'L4', text: '狗狗', matchId: 'R4' }
+            ],
+            right: [
+                { id: 'R1', text: 'Cat' },
+                { id: 'R2', text: 'Apple' },
+                { id: 'R3', text: 'Banana' },
+                { id: 'R4', text: 'Dog' }
+            ]
+        };
+
+        const leftCol = document.getElementById('left-column');
+        const rightCol = document.getElementById('right-column');
+        const svgCanvas = document.getElementById('svg-canvas');
+
+        let selectedLeft = null;
+
+        // 初始化遊戲畫面
+        function initGame() {
+            // 打亂右邊答案的順序 (可選)
+            const shuffledRight = gameData.right.sort(() => Math.random() - 0.5);
+
+            gameData.left.forEach(item => {
+                const div = createItemDiv(item, 'left');
+                leftCol.appendChild(div);
+            });
+
+            shuffledRight.forEach(item => {
+                const div = createItemDiv(item, 'right');
+                rightCol.appendChild(div);
+            });
+        }
+
+        // 建立選項按鈕
+        function createItemDiv(item, side) {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.textContent = item.text;
+            div.dataset.id = item.id;
+            if (item.matchId) div.dataset.match = item.matchId;
+            div.dataset.side = side;
+
+            div.addEventListener('click', () => handleItemClick(div));
+            return div;
+        }
+
+        // 處理點擊邏輯
+        function handleItemClick(element) {
+            if (element.classList.contains('matched')) return;
+
+            const side = element.dataset.side;
+
+            if (side === 'left') {
+                // 清除之前的選取狀態
+                if (selectedLeft) selectedLeft.classList.remove('selected');
+                selectedLeft = element;
+                element.classList.add('selected');
+            } 
+            else if (side === 'right' && selectedLeft) {
+                // 檢查是否配對成功
+                if (selectedLeft.dataset.match === element.dataset.id) {
+                    // 配對成功
+                    selectedLeft.classList.remove('selected');
+                    selectedLeft.classList.add('matched');
+                    element.classList.add('matched');
+                    drawLine(selectedLeft, element);
+                    selectedLeft = null;
+                    checkWin();
+                } else {
+                    // 配對失敗，簡單的視覺回饋
+                    element.style.backgroundColor = '#ffcdd2';
+                    setTimeout(() => element.style.backgroundColor = '', 500);
+                }
+            }
+        }
+
+        // 在兩個元素之間畫線
+        function drawLine(el1, el2) {
+            const containerRect = document.getElementById('game-container').getBoundingClientRect();
+            const rect1 = el1.getBoundingClientRect();
+            const rect2 = el2.getBoundingClientRect();
+
+            // 計算相對於容器的中心點
+            const x1 = rect1.right - containerRect.left;
+            const y1 = rect1.top + (rect1.height / 2) - containerRect.top;
+            const x2 = rect2.left - containerRect.left;
+            const y2 = rect2.top + (rect2.height / 2) - containerRect.top;
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            svgCanvas.appendChild(line);
+        }
+
+        // 檢查是否全部完成
+        function checkWin() {
+            const matchedItems = document.querySelectorAll('.item.matched');
+            if (matchedItems.length === (gameData.left.length * 2)) {
+                setTimeout(() => {
+                    alert('🎉 恭喜完成熱身！準備開始今天的課程！');
+                }, 300);
+            }
+        }
+
+        // 啟動遊戲
+        initGame();
+    </script>
+</body>
+</html>
