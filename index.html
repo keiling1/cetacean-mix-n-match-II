@@ -121,7 +121,7 @@
     <p>點擊左邊題目，再點右邊答案。連錯可以重連，確認無誤後請按送出！</p>
 
     <div id="controls">
-        <div id="timer">時間: 300秒</div>
+        <div id="timer">時間: 30秒</div>
         <button id="confirm-btn">確認送出</button>
     </div>
 
@@ -151,7 +151,7 @@
             ]
         };
 
-        let timeLeft = 300; 
+        let timeLeft = 30; 
 
         const leftCol = document.getElementById('left-column');
         const rightCol = document.getElementById('right-column');
@@ -272,7 +272,7 @@
                 if (leftEl && rightEl) {
                     drawLine(leftEl, rightEl, leftId);
                     
-                    /* if (isGameOver) {
+                    if (isGameOver) {
                         const line = document.getElementById(`line-${leftId}`);
                         const correctMatchId = gameData.left.find(item => item.id === leftId).matchId;
                         if (rightId === correctMatchId) {
@@ -280,7 +280,7 @@
                         } else {
                             line.setAttribute('class', 'line-wrong');
                         }
-                    } */
+                    }
                 }
             }
         });
@@ -295,7 +295,6 @@
             confirmBtn.textContent = '已送出';
             document.getElementById('game-container').style.opacity = '0.9';
 
-            /* --------- 以下為註解掉的核對答案邏輯 ---------
             let score = 0;
             const total = gameData.left.length;
 
@@ -313,7 +312,7 @@
                 }
             });
 
-            setTimeout(() => {
+            /* setTimeout(() => {
                 if (score === total) {
                     alert(`🎉 太棒了！全對！\n你的成績：${score} / ${total}`);
                 } else {
