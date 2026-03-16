@@ -166,10 +166,12 @@
 
         // 初始化遊戲
         function initGame() {
-            const shuffledRight = gameData.right.sort(() => Math.random() - 0.5);
-
+            // 💡 已經把 .sort(() => Math.random() - 0.5) 拿掉了，現在會照著 R1~R6 的原始順序排
+            
             gameData.left.forEach(item => leftCol.appendChild(createItemDiv(item, 'left')));
-            shuffledRight.forEach(item => rightCol.appendChild(createItemDiv(item, 'right')));
+            
+            // 直接讀取 gameData.right，不經過洗牌
+            gameData.right.forEach(item => rightCol.appendChild(createItemDiv(item, 'right')));
 
             confirmBtn.addEventListener('click', endGame);
             startTimer();
