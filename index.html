@@ -72,8 +72,8 @@
         /* 選項按鈕設定 */
         .item {
             padding: 15px 20px;
-            background-color: #A8F1FF;
-            border: 2px solid #00bcd4;
+            background-color: #D4F6FF;
+            border: 2px solid #C4D9FF;
             border-radius: 8px;
             cursor: pointer;
             text-align: center;
@@ -293,6 +293,7 @@
             confirmBtn.textContent = '已送出';
             document.getElementById('game-container').style.opacity = '0.9';
 
+            /* --------- 以下為註解掉的核對答案邏輯 ---------
             let score = 0;
             const total = gameData.left.length;
 
@@ -317,6 +318,7 @@
                     alert(`⏱️ 測驗結束！\n你的成績：${score} / ${total}\n（綠線為正確，紅線為錯誤）`);
                 }
             }, 300);
+            ------------------------------------------------ */
         } 
 
         initGame();
